@@ -981,12 +981,15 @@ export function registerRoutes(app: Express) {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      const cleanEmail = email.trim().toLowerCase();
+      const [user] = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1);
       if (!user) {
+        console.log(`Login failed: User not found for email '${cleanEmail}'`);
         return res.status(401).json({ message: "Invalid credentials" });
       }
       const validPassword = await bcrypt.compare(password, user.password);
       if (!validPassword) {
+        console.log(`Login failed: Invalid password for user '${cleanEmail}'`);
         return res.status(401).json({ message: "Invalid credentials" });
       }
       
