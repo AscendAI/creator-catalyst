@@ -1,0 +1,64 @@
+Prompt:
+
+I need you to add UTC date/time timestamps in two places across my React + TypeScript creator dashboard:
+
+1. Paired Video Table — "Date" Column
+
+In the paired video tables (where Instagram and TikTok videos are shown side by side in rows), replace the generic date display (e.g. "Feb 10, 2026") with per-platform UTC timestamps showing platform icons.
+
+Each Date cell should show:
+
+Line 1: Instagram icon (pink) + timestamp like "10 Feb 06:56 UTC"
+Line 2: TikTok icon + timestamp like "10 Feb 06:50 UTC"
+Line 3 (if paired): A small badge showing match type ("Duration" or "Thumbnail")
+2. Video Cards — Overlay Timestamp
+
+On every video card (the ones with thumbnails), add a small UTC timestamp overlay in the bottom-left corner of the thumbnail area. Format: "5 Jan 22:22 UTC".
+
+How to implement it:
+
+Date formatting utility — Create or use a utility function like this in client/src/lib/date-utils.ts:
+
+import { format, toZonedTime } from 'date-fns-tz';
+export function formatUTCDate(dateInput: string | Date, formatStr: string = "d MMM HH:mm"): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  const utcDate = toZonedTime(date, 'UTC');
+  return format(utcDate, formatStr, { timeZone: 'UTC' });
+}
+Install date-fns-tz if not already installed.
+
+For the paired video Date column, replace the existing date cell content with:
+
+<div className="flex flex-col gap-1.5">
+  {(row.ig?.postedAt || (row.ig as any)?.timestamp) && (
+    <div className="flex items-center gap-1 text-gray-400">
+      <SiInstagram className="w-3 h-3 text-pink-500 flex-shrink-0" />
+      <span>{formatUTCDate(new Date((row.ig as any)?.timestamp || row.ig!.postedAt || 0).toISOString(), "d MMM HH:mm")} UTC</span>
+    </div>
+  )}
+  {(row.tiktok?.postedAt || (row.tiktok as any)?.timestamp) && (
+    <div className="flex items-center gap-1 text-gray-400">
+      <SiTiktok className="w-3 h-3 flex-shrink-0" />
+      <span>{formatUTCDate(new Date((row.tiktok as any)?.timestamp || row.tiktok!.postedAt || 0).toISOString(), "d MMM HH:mm")} UTC</span>
+    </div>
+  )}
+</div>
+Important: Videos may have their date in either postedAt (Date object) or timestamp (string/number), so always use a fallback: (video as any).timestamp || video.postedAt
+
+For video cards, add this overlay inside the thumbnail container (the relative div wrapping the <img>):
+
+{(video.postedAt || (video as any).timestamp) && (
+  <div className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1">
+    <Clock className="w-3 h-3" />
+    {formatUTCDate(new Date((video as any).timestamp || video.postedAt || 0).toISOString(), "d MMM HH:mm")} UTC
+  </div>
+)}
+Icons needed: SiInstagram and SiTiktok from react-icons/si, Clock from lucide-react.
+
+Files to modify:
+
+client/src/pages/admin/creator-detail.tsx — paired video tables + video cards
+client/src/pages/creator/dashboard.tsx — paired video tables + video cards
+client/src/pages/creator/videos.tsx — video cards
+client/src/pages/admin/creator-hub.tsx — video cards (top videos section)
+Search for all <img tags showing video thumbnails and all Date <TableCell> blocks in paired video tables to find every location that needs updating.

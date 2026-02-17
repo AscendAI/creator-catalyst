@@ -1,0 +1,32 @@
+Whisper Creator Dashboard — What It Does
+
+This is a payment management system for UGC (user-generated content) creators who post short-form videos across three platforms: Instagram Reels, TikTok, and YouTube Shorts.
+
+Core flow:
+
+Admins add creators to the system and link their social media usernames (Instagram, TikTok, YouTube).
+The system syncs video data from those platforms — pulling in each video's views, likes, comments, duration, and thumbnail.
+Videos are automatically paired across platforms. A video on Instagram gets matched to the same video on TikTok by comparing durations within a 36-hour posting window. YouTube Shorts are optional.
+Creators get paid based on 2-week payout cycles. Pay includes:
+Base pay per paired video (configurable per platform, with optional per-creator custom rates)
+View bonuses when videos hit milestone thresholds (e.g., 10K views, 50K views)
+Only eligible videos count — they must not be marked irrelevant, and must be posted on or after the creator's join date.
+There are also Bounties (one-off challenges with rewards/penalties) and Streak Survivor (a game where creators must post daily to stay alive and split a prize pool).
+How ScrapeCreators Works
+
+ScrapeCreators is a third-party API service that fetches public video data from social platforms. The dashboard uses it as the primary data source.
+
+API endpoints used:
+
+TikTok: GET /v3/tiktok/profile/videos — pass a TikTok username, get back their recent videos with views, likes, comments, duration, thumbnail, and post date.
+Instagram: GET /v1/instagram/user/reels — pass an Instagram username, get back their reels with the same metrics.
+YouTube: GET /v1/youtube/channel/shorts — pass a YouTube channel handle, get back Shorts under 60 seconds with metrics.
+How syncing works:
+
+The system sends requests to ScrapeCreators with the creator's username for each platform.
+It receives back an array of video objects with metrics.
+Before saving new data, it deletes old video records for that creator (while preserving any manual engagement notes).
+The fresh video data is inserted into the database.
+After sync, the system runs milestone detection, updates survivor game stats, and saves stats snapshots.
+Creators can self-sync up to 3 times per day. Admins can sync any creator or all creators at once with no limit.
+Authentication: All ScrapeCreators API calls include the SCRAPECREATORS_API_KEY in the request headers.

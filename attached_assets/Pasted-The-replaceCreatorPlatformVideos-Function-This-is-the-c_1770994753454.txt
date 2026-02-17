@@ -1,0 +1,40 @@
+The replaceCreatorPlatformVideos Function
+This is the core function that handles saving fetched videos to the database. It's called after every sync — whether it's a single creator refresh or a bulk sync.
+
+What It Does
+When we fetch videos from ScrapeCreators for a creator on a specific platform (say Instagram), we get back a fresh list of up to 100 videos with current metrics. The function then:
+
+Step 1: Get all existing videos for this creator on this platform from the database.
+
+Step 2: Compare fetched vs. existing by matching on platform_video_id (the unique ID that Instagram or TikTok assigns to each video).
+
+Step 3: For each fetched video:
+
+If it already exists in the database → Update its metrics (views, likes, comments, thumbnail, duration). Keep its existing cycle assignment — don't move it.
+If it's new (never seen before) → Insert it as a new row and assign it to the correct payout cycle based on when it was posted.
+Step 4: Videos that exist in the database but were NOT in the fetched list → These are left alone. They're not deleted. This protects against incomplete API responses (e.g., if ScrapeCreators only returned 50 of 100 videos due to a glitch, the other 50 stay safe in the database).
+
+The Key Protection: Cycle Locking
+There's a critical guard in this function: videos in ended cycles are locked. If a cycle's end date has already passed, no video in that cycle can be moved to a different cycle. This means:
+
+Past payout calculations stay accurate
+A sync can still update the metrics on an old video (views, likes), but it can't change which cycle it belongs to
+Only videos in the current active cycle (or unassigned videos) can have their cycle assignment changed
+Why Not Just Delete-All-and-Reinsert?
+A true "delete everything and reinsert" approach would be dangerous because:
+
+You'd lose cycle assignments — the system wouldn't know which cycle each video belongs to
+If the API returns fewer videos than expected (rate limit, glitch), you'd permanently lose data
+Snapshots reference video IDs — deleting and recreating would break those references
+So it's really an upsert pattern (update if exists, insert if new) rather than a true delete-and-replace, with the added safety of cycle locking to protect historical data.
+
+In Simple Terms
+Think of it like updating a spreadsheet:
+
+You get a fresh list of videos from the API
+For each video, you check if it's already in your spreadsheet
+If yes, you update the numbers (views, likes, etc.) but don't move the row
+If no, you add a new row
+You never delete rows, even if the API didn't return them this time
+Rows in completed pay periods are frozen — you can update their view counts but can't change which pay period they belong to
+That's the full picture. The name "replace" is a bit misleading — it's really a safe merge/upsert with cycle protection.

@@ -1,0 +1,345 @@
+import { Button } from "@/components/ui/button";
+import { BarChart3, Users, Zap, TrendingUp, Share2, Shield, ArrowRight } from "lucide-react";
+import { SiTiktok, SiInstagram, SiYoutube } from "react-icons/si";
+import { useRef, useEffect, useState } from "react";
+import logoImage from "@assets/your-logo.png"; // Replace with your logo
+
+const STAR_COUNT = 200;
+const ATTRACTION_RADIUS = 150;
+const ATTRACTION_STRENGTH = 0.015;
+const RETURN_STRENGTH = 0.025;
+
+interface Star {
+  id: number;
+  homeX: number;
+  homeY: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  driftVx: number;
+  driftVy: number;
+  size: number;
+  opacity: number;
+  isStatic: boolean;
+}
+
+export default function Landing() {
+  const heroRef = useRef<HTMLDivElement>(null);
+  const starsRef = useRef<Star[]>([]);
+  const starElementsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const mousePos = useRef({ x: -1000, y: -1000 });
+  const rafId = useRef<number | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    
+    const rect = hero.getBoundingClientRect();
+    const stars: Star[] = [];
+    
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const homeX = Math.random() * rect.width;
+      const homeY = Math.random() * rect.height;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.02 + Math.random() * 0.03;
+      const isStatic = i < 50;
+      stars.push({
+        id: i,
+        homeX,
+        homeY,
+        x: homeX,
+        y: homeY,
+        vx: 0,
+        vy: 0,
+        driftVx: isStatic ? 0 : Math.cos(angle) * speed,
+        driftVy: isStatic ? 0 : Math.sin(angle) * speed,
+        size: isStatic ? 1 + Math.random() * 1.5 : 1.5 + Math.random() * 2,
+        opacity: isStatic ? 0.15 + Math.random() * 0.2 : 0.2 + Math.random() * 0.35,
+        isStatic,
+      });
+    }
+    starsRef.current = stars;
+    setInitialized(true);
+    
+    const animate = () => {
+      const heroRect = hero.getBoundingClientRect();
+      const mx = mousePos.current.x;
+      const my = mousePos.current.y - heroRect.top;
+      const friction = 0.92;
+      
+      for (let i = 0; i < starsRef.current.length; i++) {
+        const star = starsRef.current[i];
+        
+        if (star.isStatic) {
+          const el = starElementsRef.current[i];
+          if (el) {
+            el.style.transform = `translate3d(${star.x}px, ${star.y}px, 0)`;
+          }
+          continue;
+        }
+        
+        const dx = mx - star.x;
+        const dy = my - star.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < ATTRACTION_RADIUS && mx > 0 && my > 0 && my < heroRect.height) {
+          const force = (ATTRACTION_RADIUS - dist) / ATTRACTION_RADIUS;
+          const easeForce = force * force;
+          star.vx += dx * ATTRACTION_STRENGTH * easeForce;
+          star.vy += dy * ATTRACTION_STRENGTH * easeForce;
+        } else {
+          star.vx += star.driftVx;
+          star.vy += star.driftVy;
+          
+          if (star.x < 0 || star.x > heroRect.width) {
+            star.driftVx *= -1;
+            star.x = Math.max(0, Math.min(heroRect.width, star.x));
+          }
+          if (star.y < 0 || star.y > heroRect.height) {
+            star.driftVy *= -1;
+            star.y = Math.max(0, Math.min(heroRect.height, star.y));
+          }
+        }
+        
+        star.vx *= friction;
+        star.vy *= friction;
+        star.x += star.vx;
+        star.y += star.vy;
+        
+        const el = starElementsRef.current[i];
+        if (el) {
+          el.style.transform = `translate3d(${star.x}px, ${star.y}px, 0)`;
+        }
+      }
+      
+      rafId.current = requestAnimationFrame(animate);
+    };
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
+    };
+    
+    const handleMouseLeave = () => {
+      mousePos.current = { x: -1000, y: -1000 };
+    };
+    
+    rafId.current = requestAnimationFrame(animate);
+    hero.addEventListener('mousemove', handleMouseMove, { passive: true });
+    hero.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      hero.removeEventListener('mousemove', handleMouseMove);
+      hero.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4 h-16">
+            <div className="flex items-center gap-3">
+              <img src={logoImage} alt="Your Brand" className="w-10 h-10 rounded-lg" />
+              <span className="font-bold text-xl text-gray-900">Your Brand</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900" onClick={() => window.location.href = "/login"}>Log in</Button>
+              <Button onClick={() => window.location.href = "/signup"}>Get Started</Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <div className="pt-16 pb-8 px-2 sm:px-3 lg:px-4 bg-white">
+        <div 
+          ref={heroRef}
+          className="relative overflow-hidden mx-auto rounded-[2rem] sm:rounded-[3rem]"
+          style={{ background: '#030712' }}
+        >
+          {/* Star particles */}
+          {initialized && starsRef.current.map((star, i) => (
+            <div
+              key={star.id}
+              ref={el => { starElementsRef.current[i] = el; }}
+              className="pointer-events-none absolute rounded-full will-change-transform"
+              style={{
+                width: `${star.size}px`,
+                height: `${star.size}px`,
+                marginLeft: `-${star.size / 2}px`,
+                marginTop: `-${star.size / 2}px`,
+                opacity: star.opacity,
+                background: 'hsl(220 25% 85%)',
+                boxShadow: `0 0 ${star.size * 2}px hsl(220 30% 90% / 0.5)`,
+                transform: `translate3d(${star.x}px, ${star.y}px, 0)`,
+              }}
+            />
+          ))}
+
+          <section className="pt-16 pb-20 px-6 sm:px-12 lg:px-16 relative">
+            <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
+            <div className="absolute top-32 left-1/3 w-96 h-96 bg-primary/8 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 right-1/3 w-80 h-80 bg-primary/6 rounded-full blur-[100px]" />
+            
+            <div className="max-w-7xl mx-auto relative">
+              <div className="text-center max-w-3xl mx-auto">
+                <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/[0.03] border border-white/10 mb-8 backdrop-blur-sm">
+                  <img src={logoImage} alt="" className="w-6 h-6 rounded" />
+                  <span className="text-sm text-white/80 tracking-wide font-bold">Free for UGC creators</span>
+                </div>
+                
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
+                  <span className="text-white">Your UGC</span>
+                  <br />
+                  <span className="bg-gradient-to-r from-primary via-violet-400 to-primary/70 bg-clip-text text-[#774dff]">
+                    Analytics Dashboard
+                  </span>
+                </h1>
+                
+                <p className="text-xl text-white/50 mb-10 max-w-2xl mx-auto leading-relaxed font-light">
+                  Track performance across TikTok, Instagram, and YouTube. Manage multiple brands. Grow your creator business.
+                </p>
+                
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                  <Button size="lg" className="gap-2 text-lg px-8 py-6 transition-transform duration-200 hover:scale-105 bg-[#774dff] text-[#fffffff5]" onClick={() => window.location.href = "/signup"}>
+                    Get Started Free
+                    <ArrowRight className="h-5 w-5" />
+                  </Button>
+                </div>
+                
+                {/* Platform icons */}
+                <div className="flex items-center justify-center gap-8 text-white/40">
+                  <div className="flex items-center gap-2 transition-colors duration-200 hover:text-white/60">
+                    <SiTiktok className="h-5 w-5" />
+                    <span className="text-sm font-medium">TikTok</span>
+                  </div>
+                  <div className="flex items-center gap-2 transition-colors duration-200 hover:text-white/60">
+                    <SiInstagram className="h-5 w-5" />
+                    <span className="text-sm font-medium">Instagram</span>
+                  </div>
+                  <div className="flex items-center gap-2 transition-colors duration-200 hover:text-white/60">
+                    <SiYoutube className="h-5 w-5" />
+                    <span className="text-sm font-medium">YouTube</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature Cards */}
+              <div className="mt-20 max-w-5xl mx-auto">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="group relative p-6 rounded-xl bg-gradient-to-br from-primary/10 to-violet-500/5 border border-white/10 transition-all duration-500 hover:border-primary/40 hover:scale-[1.02] hover:-translate-y-1 overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-24 h-24 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/40 group-hover:scale-150 transition-all duration-700" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Zap className="h-5 w-5 text-primary group-hover:animate-pulse" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-primary/80">Platform</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-primary transition-colors duration-300">Creator-Driven Platform</h3>
+                      <p className="text-sm text-white/50 group-hover:text-white/70 transition-colors duration-300">Built for Real-World Performance</p>
+                    </div>
+                  </div>
+
+                  <div className="group relative p-6 rounded-xl bg-gradient-to-br from-violet-500/10 to-primary/5 border border-white/10 transition-all duration-500 hover:border-violet-400/40 hover:scale-[1.02] hover:-translate-y-1 overflow-hidden">
+                    <div className="absolute -right-6 -bottom-6 w-20 h-20 bg-violet-500/20 rounded-full blur-2xl group-hover:bg-violet-400/40 group-hover:scale-150 transition-all duration-700" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Users className="h-5 w-5 text-violet-400 group-hover:scale-110 transition-transform duration-300" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-violet-400/80">Management</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-violet-300 transition-colors duration-300">Brands Managed Seamlessly</h3>
+                      <p className="text-sm text-white/50 group-hover:text-white/70 transition-colors duration-300">Across Multiple Accounts</p>
+                    </div>
+                  </div>
+
+                  <div className="group relative p-6 rounded-xl bg-gradient-to-br from-cyan-500/10 to-primary/5 border border-white/10 transition-all duration-500 hover:border-cyan-400/40 hover:scale-[1.02] hover:-translate-y-1 overflow-hidden">
+                    <div className="absolute -left-8 -top-8 w-24 h-24 bg-cyan-500/15 rounded-full blur-2xl group-hover:bg-cyan-400/30 group-hover:scale-150 transition-all duration-700" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChart3 className="h-5 w-5 text-cyan-400 group-hover:rotate-12 transition-transform duration-300" />
+                        <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400/80">Insights</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-cyan-300 transition-colors duration-300">Deep Insights Without Login</h3>
+                      <div className="flex items-center gap-3 mt-3">
+                        <SiTiktok className="h-4 w-4 text-white/40 group-hover:text-white/80 group-hover:scale-110 transition-all duration-300" />
+                        <SiInstagram className="h-4 w-4 text-white/40 group-hover:text-white/80 group-hover:scale-110 transition-all duration-300 delay-75" />
+                        <SiYoutube className="h-4 w-4 text-white/40 group-hover:text-white/80 group-hover:scale-110 transition-all duration-300 delay-150" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 group relative p-6 rounded-xl bg-gradient-to-r from-primary/5 via-violet-500/10 to-primary/5 border border-white/10 transition-all duration-500 hover:border-primary/30 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                  <div className="relative flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+                    <TrendingUp className="h-6 w-6 text-primary group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" />
+                    <div>
+                      <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors duration-300">Built for Growth</h3>
+                      <p className="text-sm text-white/50 group-hover:text-white/70 transition-colors duration-300">Smarter Tracking, Better Results</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">Everything you need to grow</h2>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">
+              Powerful tools designed specifically for independent UGC creators.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: BarChart3, title: "Unified Analytics", description: "See all your metrics across TikTok, Instagram, and YouTube in one beautiful dashboard." },
+              { icon: Users, title: "Multi-Brand Management", description: "Track unlimited brands. Switch between accounts effortlessly." },
+              { icon: TrendingUp, title: "Growth Insights", description: "Understand what's working with detailed trend analysis and performance charts." },
+              { icon: Share2, title: "Shareable Cards", description: "Generate beautiful public profile cards to share with brands and agencies." },
+              { icon: Zap, title: "Real-time Updates", description: "Get the latest metrics with one-click refresh. Stay on top of your performance." },
+              { icon: Shield, title: "Privacy First", description: "No OAuth required. Your login credentials stay with you." },
+            ].map((feature) => (
+              <div key={feature.title} className="p-6 rounded-xl bg-gray-50 border border-gray-100 transition-all duration-300 hover:bg-gray-100 hover:border-gray-200">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+                  <feature.icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2 text-gray-900">{feature.title}</h3>
+                <p className="text-gray-500">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6 text-gray-900">Ready to level up your creator game?</h2>
+          <p className="text-lg text-gray-500 mb-8">Join hundreds of creators already using our platform to track and grow their business.</p>
+          <Button size="lg" className="gap-2 text-lg px-8 py-6" onClick={() => window.location.href = "/signup"}>
+            Start for Free
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t border-gray-100 bg-white">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <img src={logoImage} alt="Your Brand" className="w-8 h-8 rounded-lg" />
+            <span className="font-semibold text-gray-900">Your Brand</span>
+          </div>
+          <p className="text-sm text-gray-400">Powered by Your Company</p>
+        </div>
+      </footer>
+    </div>
+  );
+}

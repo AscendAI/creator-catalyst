@@ -1,0 +1,132 @@
+ScrapeCreators Integration — Full Technical Breakdown
+Base Configuration
+API Base URL: https://api.scrapecreators.com
+Authentication: API key sent via x-api-key header on every request
+Video limit per creator: 100 videos max (both Instagram and TikTok)
+Part 1: Fetching Instagram Videos
+Endpoint Used
+GET /v1/instagram/user/reels?handle={username}
+
+How It Works Step-by-Step
+We call the reels endpoint with the creator's Instagram username (e.g., handle=henryhackslife)
+
+The API returns a page of reels (~12 per page) with all data included inline:
+
+play_count → views
+like_count → likes
+comment_count → comments
+caption.text → caption
+taken_at → Unix timestamp (seconds) of when the video was posted
+video_duration → duration in seconds
+image_versions2.candidates[0].url → thumbnail URL
+code → shortcode used to build the Instagram reel URL (https://www.instagram.com/reel/{code}/)
+pk or id → unique video identifier
+We check paging_info.more_available in the response. If true, we use paging_info.max_id as a cursor for the next page:
+GET /v1/instagram/user/reels?handle={username}&max_id={max_id}
+
+We keep paginating until:
+
+more_available is false, OR
+max_id is missing, OR
+We've collected 100 videos (the hard limit)
+After collecting all videos, we pass them to replaceCreatorPlatformVideos() which:
+
+Updates existing videos with fresh metrics (views, likes, comments)
+Inserts any new videos not seen before
+Assigns videos to the correct payout cycle based on their post timestamp
+Fallback Path
+If ScrapeCreators fails or returns 0 videos, the system falls back to the official Instagram Graph API using the creator's OAuth token. In this fallback path, it also uses ScrapeCreators for individual video insights:
+
+GET /v1/instagram/post?url={permalink}
+
+This returns video_view_count/play_count, like_count, and comment_count for a single post.
+
+Follower Count
+GET /v1/instagram/profile?handle={username}
+
+Returns the creator's follower count from data.user.edge_followed_by.count.
+
+Part 2: Fetching TikTok Videos
+Endpoint Used
+GET /v3/tiktok/profile/videos?handle={username}
+
+How It Works Step-by-Step
+We clean the TikTok username (remove @, extract from full URL if needed)
+
+Call the videos endpoint with the clean username
+
+The API returns a batch of videos in aweme_list with:
+
+aweme_id → unique video ID
+desc → caption/description
+create_time → Unix timestamp (seconds)
+statistics.play_count → views
+statistics.digg_count → likes
+statistics.comment_count → comments
+statistics.share_count → shares
+video.duration → duration in seconds
+video.cover.url_list[0] → thumbnail URL
+Pagination uses has_more (0 or 1) and max_cursor:
+GET /v3/tiktok/profile/videos?handle={username}&max_cursor={cursor}
+
+We keep paginating until:
+
+has_more is 0, OR
+max_cursor is missing, OR
+We've collected 100 videos
+Suspicious drop protection: If we previously had 10+ videos and this sync returns less than 50% of that AND fewer than 5 videos, we assume it's an API glitch and automatically retry up to 2 times (with a 2-second wait between retries)
+
+Follower Count
+GET /v1/tiktok/profile?handle={username}
+
+Returns the follower count from stats.followerCount.
+
+Part 3: Throttling (Delays Between Calls)
+This is how we prevent rate limiting and missed videos.
+
+Between Pagination Pages (within one creator)
+Delay: 300ms between each page request
+Applied to both Instagram reel pagination and TikTok video pagination
+The first page has no delay; every subsequent page waits 300ms before firing
+This means fetching 100 videos (~9 pages) takes roughly 2.4 extra seconds per creator
+Between Creators (during bulk operations)
+Delay: 500ms between each creator
+Applied in three bulk sync functions:
+syncAllCreators() — scheduled platform-wide sync
+syncAllCreatorsBeforeCycleEnd() — triggered hourly when cycle is ending within 1 hour
+refreshAllEngagement() — weekly scheduled bulk refresh (Sunday 9 PM UTC)
+With 39 creators, this adds about 19 seconds total to a bulk refresh
+Part 4: Retry Logic (Handling Failed Requests)
+Every ScrapeCreators API call goes through a fetchWithRetry wrapper that handles two types of failures:
+
+HTTP Errors (429 Rate Limited, 500+ Server Errors)
+Max retries: 2
+Backoff: Exponential — 1.5 seconds on first retry, 3 seconds on second retry
+Non-retryable errors (400, 401, 403, 404) return immediately without retry
+Network Errors (Timeouts, Connection Failures)
+Same retry behavior: 2 retries with exponential backoff (1.5s, then 3s)
+If all retries fail, the error is thrown and the creator is skipped (logged but doesn't crash the whole sync)
+How the Retry Flow Works
+Request → Success? → Done
+           ↓ No
+         429 or 500+? → Wait 1.5s → Retry
+           ↓ No                      ↓ Fail again
+         Return error        Wait 3s → Final retry
+                                       ↓ Fail
+                                     Return error
+Part 5: What Happens With the Data
+After fetching videos from ScrapeCreators, the function replaceCreatorPlatformVideos() is called. This function:
+
+Gets all existing videos for this creator on this platform
+For each fetched video:
+If it already exists (matched by platform_video_id), update its metrics (views, likes, comments, thumbnail, duration)
+If it's new, insert it and assign it to the correct payout cycle
+Videos in ended cycles (past the cycle's end date) are locked — their cycle assignment won't change even if a new sync runs
+Summary of API Calls Per Bulk Refresh
+What	Calls per creator	With 39 creators
+Instagram reels (paginated)	~9 calls	~351 calls
+Instagram followers	1 call	~39 calls
+TikTok videos (paginated)	~5 calls	~195 calls
+TikTok followers	1 call	~39 calls
+Total	~16 calls	~624 calls
+With throttling, a full bulk refresh of 39 creators takes roughly 2-3 minutes instead of firing 624 requests in under 10 seconds.

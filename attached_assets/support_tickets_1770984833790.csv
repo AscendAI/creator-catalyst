@@ -1,0 +1,10 @@
+"id","creator_id","subject","message","status","admin_response","created_at","updated_at"
+"372d6c3a-9197-4d07-b275-d8ffbf93d892","5d7c36d0-4021-4c91-b7d9-24ee83fa9a76","Entered wrong name for payment ","Hi, I entered the wrong name for my PayPal details. I put in my preferred name “Audrey Yang” instead of my legal name “Chaeyoon Yang” by accident. Sorry for the inconvenience ","resolved","Hi Chaeyoon Yang,
+
+Your name has been successfully updated from ""Audrey Yang"" to ""Chaeyoon Yang""
+
+If you need to change your PayPal email, please raise a support ticket.
+
+Best regards,
+Tyron
+","""2026-02-11T17:28:43.528Z""","""2026-02-11T19:53:57.165Z"""

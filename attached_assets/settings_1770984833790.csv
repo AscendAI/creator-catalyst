@@ -1,0 +1,8 @@
+"id","key","value","updated_at"
+"19ce3434-12fc-4cb3-bb84-4c2e77f22179","tiktokBasePayPerVideo","20","""2026-01-28T09:58:47.524Z"""
+"4cfe9de5-746c-45c6-aaeb-1cf4d40d9818","bonusViewThreshold","1000","""2026-01-28T09:58:47.440Z"""
+"78f431e0-7a7e-480c-874e-62942176af96","minVideosPerWeek","3","""2026-01-28T09:58:47.356Z"""
+"b072d634-3843-4918-bd3e-2d245608eb75","maxVideosPerDay","2","""2026-01-28T09:58:47.398Z"""
+"e117773b-1203-4891-9da5-c1516094ec96","basePayPerVideo","10","""2025-12-26T10:06:23.646Z"""
+"f074b711-5cdf-482c-8ff7-6fd1a5ca5f54","instagramBasePayPerVideo","20","""2026-01-28T09:58:47.482Z"""
+"f394c976-8343-4ded-8bd6-6b1b03be1d80","bonusPayPer100kViews","1","""2026-01-28T09:58:47.314Z"""
