@@ -918,21 +918,21 @@ export function registerRoutes(app: Express) {
         return res.status(400).json({ message: "Email already exists" });
       }
       const hashedPassword = await bcrypt.hash(password, 10);
-      const verificationCode = generateVerificationCode();
       const [user] = await db.insert(users).values({
         email,
         password: hashedPassword,
         role: "creator",
-        verificationToken: verificationCode,
-        verificationCodeExpiry: new Date(Date.now() + 15 * 60 * 1000),
+        emailVerified: true,
       }).returning();
+      
       await db.insert(creators).values({
         userId: user.id,
         name: name || email.split("@")[0],
         email,
       });
-      await sendVerificationEmail(email, verificationCode);
-      res.json({ requiresVerification: true, email, message: "Please check your email for a verification code." });
+
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
+      res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
       console.error("Signup error:", error);
       res.status(500).json({ message: "Signup failed" });
@@ -1048,15 +1048,7 @@ export function registerRoutes(app: Express) {
       if (!validPassword) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
-      if (!user.emailVerified && user.role !== "admin") {
-        const newCode = generateVerificationCode();
-        await db.update(users).set({
-          verificationToken: newCode,
-          verificationCodeExpiry: new Date(Date.now() + 15 * 60 * 1000),
-        }).where(eq(users.id, user.id));
-        await sendVerificationEmail(email, newCode);
-        return res.status(403).json({ requiresVerification: true, email, message: "Please verify your email first. A new code has been sent." });
-      }
+      
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: "30d" });
       res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (error) {
