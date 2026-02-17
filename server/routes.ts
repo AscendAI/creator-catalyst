@@ -9,7 +9,8 @@ import { Resend } from "resend";
 import { fetchTikTokVideos, fetchInstagramReels, fetchTikTokProfile, fetchInstagramProfile, instagramPkToShortcode, isInstagramNumericPk, delay } from "./scrapecreators";
 
 const JWT_SECRET = process.env.JWT_SECRET || "whisper-jwt-secret";
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const resend = null; // Resend disabled
 const EMAIL_FROM = "Creator Catalyst <contact@neonugc.com>";
 function getAppUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL;
