@@ -27,73 +27,13 @@ function generateResetToken(): string {
 }
 
 async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
-  if (!resend) {
-    console.error("Resend not configured - RESEND_API_KEY missing");
-    return false;
-  }
-  try {
-    await resend.emails.send({
-      from: EMAIL_FROM,
-      to: email,
-      subject: "Verify your email - Creator Catalyst",
-      html: `
-        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background: #0A0F1A; color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-family: 'Lilita One', cursive; color: #38BDF8; font-size: 28px; margin: 0;">Creator Catalyst</h1>
-            <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Creator Dashboard</p>
-          </div>
-          <div style="background: #0F172A; border-radius: 12px; padding: 32px; text-align: center;">
-            <h2 style="color: #ffffff; font-size: 20px; margin: 0 0 12px;">Verify your email</h2>
-            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px;">Use the code below to verify your email address.</p>
-            <div style="background: #0A0F1A; border: 2px solid #38BDF8; border-radius: 8px; padding: 16px; display: inline-block; letter-spacing: 8px; font-size: 32px; font-weight: bold; color: #38BDF8; font-family: monospace;">
-              ${code}
-            </div>
-            <p style="color: #64748b; font-size: 12px; margin-top: 24px;">This code expires in 15 minutes.</p>
-          </div>
-          <p style="color: #475569; font-size: 12px; text-align: center; margin-top: 24px;">If you didn't create an account with Creator Catalyst, you can safely ignore this email.</p>
-        </div>
-      `,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to send verification email:", error);
-    return false;
-  }
+  console.log(`Verification email would be sent to ${email} with code ${code} (Resend disabled)`);
+  return true;
 }
 
 async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-  if (!resend) {
-    console.error("Resend not configured - RESEND_API_KEY missing");
-    return false;
-  }
-  const resetLink = `${getAppUrl()}/reset-password?token=${token}`;
-  try {
-    await resend.emails.send({
-      from: EMAIL_FROM,
-      to: email,
-      subject: "Reset your password - Creator Catalyst",
-      html: `
-        <div style="font-family: 'Inter', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; background: #0A0F1A; color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-family: 'Lilita One', cursive; color: #38BDF8; font-size: 28px; margin: 0;">Creator Catalyst</h1>
-            <p style="color: #94a3b8; font-size: 14px; margin-top: 4px;">Creator Dashboard</p>
-          </div>
-          <div style="background: #0F172A; border-radius: 12px; padding: 32px; text-align: center;">
-            <h2 style="color: #ffffff; font-size: 20px; margin: 0 0 12px;">Reset your password</h2>
-            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px;">Click the button below to reset your password. This link will expire in 1 hour.</p>
-            <a href="${resetLink}" style="display: inline-block; background: #38BDF8; color: #0A0F1A; font-weight: bold; font-size: 16px; padding: 12px 32px; border-radius: 8px; text-decoration: none;">Reset Password</a>
-            <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Or copy this link into your browser:</p>
-            <p style="color: #94a3b8; font-size: 12px; word-break: break-all;">${resetLink}</p>
-          </div>
-          <p style="color: #475569; font-size: 12px; text-align: center; margin-top: 24px;">If you didn't request a password reset, you can safely ignore this email.</p>
-        </div>
-      `,
-    });
-    return true;
-  } catch (error) {
-    console.error("Failed to send password reset email:", error);
-    return false;
-  }
+  console.log(`Password reset email would be sent to ${email} with token ${token} (Resend disabled)`);
+  return true;
 }
 
 async function replaceCreatorPlatformVideos(
